@@ -1,6 +1,6 @@
 module github.com/benbenbenbenbenben/goentitlement/examples/saas-api
 
-go 1.24.3
+go 1.24.2
 
 require (
 	github.com/benbenbenbenbenben/goentitlement v0.0.0

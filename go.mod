@@ -1,6 +1,6 @@
 module github.com/benbenbenbenbenben/goentitlement
 
-go 1.24.3
+go 1.24.2
 
 require (
 	github.com/cedar-policy/cedar-go v1.2.1
