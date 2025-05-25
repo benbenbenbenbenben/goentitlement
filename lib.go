@@ -24,6 +24,10 @@ func NewInMemoryEntitlementStore() EntitlementStore {
 	return NewInMemoryStore()
 }
 
+func NewFileEntitlementStore(baseDir string) (EntitlementStore, error) {
+	return NewFileStore(baseDir)
+}
+
 // Utility functions for creating entities
 
 // NewPrincipal creates a new Principal with current timestamps
