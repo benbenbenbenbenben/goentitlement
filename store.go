@@ -154,12 +154,31 @@ func (s *InMemoryStore) SaveEntitlement(ctx context.Context, entitlement Entitle
 	}
 	entitlement.UpdatedAt = now
 
-	s.entitlements[entitlement.ID] = entitlement
-
-	// Update principal entitlements index
+	// Check for existing logical duplicate and update it instead of creating a new one
 	principalID := entitlement.Principal.ID
 	entitlementIDs := s.principalEntitlements[principalID]
 
+	for _, id := range entitlementIDs {
+		existingEnt, exists := s.entitlements[id]
+		if !exists {
+			continue
+		}
+
+		// If we find a logical duplicate, update the existing entitlement
+		if isLogicalDuplicate(entitlement, existingEnt) {
+			// Preserve the original ID and CreatedAt
+			entitlement.ID = existingEnt.ID
+			entitlement.CreatedAt = existingEnt.CreatedAt
+			entitlement.UpdatedAt = now
+			s.entitlements[entitlement.ID] = entitlement
+			return nil
+		}
+	}
+
+	// No duplicate found, save as new entitlement
+	s.entitlements[entitlement.ID] = entitlement
+
+	// Update principal entitlements index
 	// Check if already exists
 	exists := false
 	for _, id := range entitlementIDs {
@@ -243,36 +262,12 @@ func (s *InMemoryStore) DeleteEntitlement(ctx context.Context, id string) error 
 // Batch operations
 
 func (s *InMemoryStore) SaveEntitlements(ctx context.Context, entitlements []Entitlement) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	now := time.Now()
 	for _, entitlement := range entitlements {
-		if entitlement.CreatedAt.IsZero() {
-			entitlement.CreatedAt = now
-		}
-		entitlement.UpdatedAt = now
-
-		s.entitlements[entitlement.ID] = entitlement
-
-		// Update principal entitlements index
-		principalID := entitlement.Principal.ID
-		entitlementIDs := s.principalEntitlements[principalID]
-
-		// Check if already exists
-		exists := false
-		for _, id := range entitlementIDs {
-			if id == entitlement.ID {
-				exists = true
-				break
-			}
-		}
-
-		if !exists {
-			s.principalEntitlements[principalID] = append(entitlementIDs, entitlement.ID)
+		// Use SaveEntitlement to handle duplicate logic for each entitlement
+		if err := s.SaveEntitlement(ctx, entitlement); err != nil {
+			return err
 		}
 	}
-
 	return nil
 }
 

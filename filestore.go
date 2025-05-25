@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // FileStore implements the EntitlementStore interface using the local filesystem.
@@ -161,6 +162,29 @@ func (fs *FileStore) GetResource(ctx context.Context, id string) (Resource, erro
 
 // SaveEntitlement saves an entitlement to a JSON file.
 func (fs *FileStore) SaveEntitlement(ctx context.Context, entitlement Entitlement) error {
+	// Check for existing logical duplicate and update it instead of creating a new one
+	existingEntitlements, err := fs.GetEntitlements(ctx, entitlement.Principal.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing entitlements: %w", err)
+	}
+
+	// Look for logical duplicates
+	for _, existingEnt := range existingEntitlements {
+		if isLogicalDuplicate(entitlement, existingEnt) {
+			// Update the existing entitlement: preserve ID and CreatedAt, update other fields
+			entitlement.ID = existingEnt.ID
+			entitlement.CreatedAt = existingEnt.CreatedAt
+			entitlement.UpdatedAt = time.Now()
+			break
+		}
+	}
+
+	// If no CreatedAt was set (new entitlement), set it now
+	if entitlement.CreatedAt.IsZero() {
+		entitlement.CreatedAt = time.Now()
+	}
+	entitlement.UpdatedAt = time.Now()
+
 	filePath := filepath.Join(fs.entitlementsDir, entitlement.ID+".json")
 	data, err := json.MarshalIndent(entitlement, "", "  ")
 	if err != nil {

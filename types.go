@@ -125,11 +125,12 @@ type EntitlementChange struct {
 type ErrorCode string
 
 const (
-	ErrorCodeNotFound     ErrorCode = "NOT_FOUND"
-	ErrorCodeUnauthorized ErrorCode = "UNAUTHORIZED"
-	ErrorCodeInvalidInput ErrorCode = "INVALID_INPUT"
-	ErrorCodeStorageError ErrorCode = "STORAGE_ERROR"
-	ErrorCodePolicyError  ErrorCode = "POLICY_ERROR"
+	ErrorCodeNotFound             ErrorCode = "NOT_FOUND"
+	ErrorCodeUnauthorized         ErrorCode = "UNAUTHORIZED"
+	ErrorCodeInvalidInput         ErrorCode = "INVALID_INPUT"
+	ErrorCodeStorageError         ErrorCode = "STORAGE_ERROR"
+	ErrorCodePolicyError          ErrorCode = "POLICY_ERROR"
+	ErrorCodeDuplicateEntitlement ErrorCode = "DUPLICATE_ENTITLEMENT"
 )
 
 // EntitlementError represents a custom error with error codes
@@ -294,6 +295,34 @@ type CedarEngine interface {
 	// Schema management
 	SetSchema(ctx context.Context, schema string) error
 	ValidatePolicy(ctx context.Context, policy string) error
+}
+
+// isLogicalDuplicate checks if two entitlements have the same logical content
+// (same Principal.ID + Resource.ID + Action + Type combination)
+func isLogicalDuplicate(ent1, ent2 Entitlement) bool {
+	// Check principal ID
+	if ent1.Principal.ID != ent2.Principal.ID {
+		return false
+	}
+
+	// Check action
+	if ent1.Action != ent2.Action {
+		return false
+	}
+
+	// Check type
+	if ent1.Type != ent2.Type {
+		return false
+	}
+
+	// Check resource - both nil or both have same ID and Type
+	if ent1.Resource == nil && ent2.Resource == nil {
+		return true
+	}
+	if ent1.Resource == nil || ent2.Resource == nil {
+		return false
+	}
+	return ent1.Resource.ID == ent2.Resource.ID && ent1.Resource.Type == ent2.Resource.Type
 }
 
 // ManagerOption configures the EntitlementManager
