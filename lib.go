@@ -24,6 +24,7 @@ func NewInMemoryEntitlementStore() EntitlementStore {
 	return NewInMemoryStore()
 }
 
+// NewFileEntitlementStore creates a new file-based store
 func NewFileEntitlementStore(baseDir string) (EntitlementStore, error) {
 	return NewFileStore(baseDir)
 }
