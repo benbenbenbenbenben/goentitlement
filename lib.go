@@ -1,60 +1,65 @@
-package goentitlment
+package goentitlement
 
-import (
-	"encoding/json"
+import "time"
 
-	cedar "github.com/cedar-policy/cedar-go"
-)
+// This file provides the main public API entry points for the goentitlement library.
+// The core implementation is in manager.go, types.go, and store.go
 
-const policyCedar = `permit (
-	principal in UserGroup::"jane_friends",
-	action == Action::"view",
-	resource == Photo::"VacationPhoto94.jpg"
-  );
-`
+// Re-export the main factory functions for easy access
 
-const entitiesJSON = `[
-  {
-    "uid": {"type": "PublicKey", "id": "ed25519:MCowBQYDK2VwAQoDIQD1OW5HC2WYL8nN0fOtWJNM8qtqQ1kwKvl+oUv7OVz5+g=="},
-    "attrs": {},
-    "parents": [{"type": "UserGroup", "id": "jane_friends"}]
-  },
-  {
-    "uid": {"type": "UserGroup", "id": "jane_friends"},
-    "attrs": {},
-    "parents": []
-  },
-  {
-    "uid": {"type": "Photo", "id": "VacationPhoto94.jpg"},
-    "attrs": {},
-    "parents": []
-  }
-]`
+// NewManager creates a new EntitlementManager with default in-memory storage
+func NewEntitlementManager(opts ...ManagerOption) EntitlementManager {
+	return NewManager(opts...)
+}
 
-func Allow() (bool, error) {
-	var policy cedar.Policy
-	if err := policy.UnmarshalCedar([]byte(policyCedar)); err != nil {
-		return false, err
+// NewEntitlementManagerWithStore creates a manager with a custom store
+func NewEntitlementManagerWithStore(store EntitlementStore, opts ...ManagerOption) EntitlementManager {
+	return NewManagerWithStore(store, opts...)
+}
+
+// Factory functions for stores
+
+// NewInMemoryEntitlementStore creates a new in-memory store
+func NewInMemoryEntitlementStore() EntitlementStore {
+	return NewInMemoryStore()
+}
+
+// Utility functions for creating entities
+
+// NewPrincipal creates a new Principal with current timestamps
+func NewPrincipal(id string, principalType PrincipalType) Principal {
+	now := time.Now()
+	return Principal{
+		ID:         id,
+		Type:       principalType,
+		Attributes: make(map[string]interface{}),
+		Groups:     []string{},
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
+}
 
-	ps := cedar.NewPolicySet()
-	ps.Add("policy0", &policy)
-
-	var entities cedar.EntityMap
-	if err := json.Unmarshal([]byte(entitiesJSON), &entities); err != nil {
-		return false, err
+// NewResource creates a new Resource with current timestamps
+func NewResource(id string, resourceType ResourceType) Resource {
+	now := time.Now()
+	return Resource{
+		ID:         id,
+		Type:       resourceType,
+		Attributes: make(map[string]interface{}),
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
+}
 
-	req := cedar.Request{
-		Principal: cedar.NewEntityUID("PublicKey", "ed25519:MCowBQYDK2VwAQoDIQD1OW5HC2WYL8nN0fOtWJNM8qtqQ1kwKvl+oUv7OVz5+g=="),
-		Action:    cedar.NewEntityUID("Action", "view"),
-		Resource:  cedar.NewEntityUID("Photo", "VacationPhoto94.jpg"),
-		Context: cedar.NewRecord(cedar.RecordMap{
-			"demoRequest": cedar.True,
-		}),
+// NewEntitlement creates a new Entitlement with current timestamps
+func NewEntitlement(principal Principal, entitlementType EntitlementType, action string) Entitlement {
+	now := time.Now()
+	return Entitlement{
+		Type:       entitlementType,
+		Principal:  principal,
+		Action:     action,
+		Conditions: make(map[string]interface{}),
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
-
-	ok, _ := cedar.Authorize(ps, &entities, req)
-
-	return bool(ok), nil
 }

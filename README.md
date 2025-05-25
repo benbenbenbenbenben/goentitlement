@@ -1,1 +1,325 @@
-# goentitlement
+# GoEntitlement - General Purpose Entitlement Library
+
+GoEntitlement is a flexible, high-performance authorization library for Go that supports multiple entitlement patterns including RBAC (Role-Based Access Control), ABAC (Attribute-Based Access Control), feature flags, and subscription management.
+
+## Features
+
+- **Multiple Authorization Patterns**: RBAC, ABAC, feature flags, subscription management
+- **Flexible Storage**: In-memory store with pluggable backend support
+- **High Performance**: Efficient caching and batch operations
+- **Security**: Audit logging, encryption support, policy validation
+- **Extensible**: Plugin architecture for custom stores and policies
+
+## Installation
+
+```bash
+go get github.com/benbenbenbenbenben/goentitlement
+```
+
+## Quick Start
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    
+    "github.com/benbenbenbenbenben/goentitlement"
+)
+
+func main() {
+    // Create manager with default in-memory store
+    manager := goentitlement.NewEntitlementManager()
+    ctx := context.Background()
+    
+    // Create entities
+    user := goentitlement.NewPrincipal("user123", goentitlement.PrincipalTypeUser)
+    document := goentitlement.NewResource("doc456", goentitlement.ResourceTypeDocument)
+    
+    // Save entities to store (required for some operations)
+    store := goentitlement.NewInMemoryEntitlementStore()
+    managerWithStore := goentitlement.NewEntitlementManagerWithStore(store)
+    
+    store.SavePrincipal(ctx, user)
+    store.SaveResource(ctx, document)
+    
+    // Grant permission
+    entitlement := goentitlement.NewEntitlement(user, goentitlement.EntitlementTypePermission, "read")
+    entitlement.Resource = &document
+    
+    err := managerWithStore.GrantEntitlement(ctx, entitlement)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // Check permission
+    allowed, err := managerWithStore.CheckPermission(ctx, user, "read", document)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    if allowed {
+        fmt.Println("User can read the document")
+    } else {
+        fmt.Println("Access denied")
+    }
+}
+```
+
+## Core Concepts
+
+### Principal
+Represents an entity that can be granted entitlements (users, services, roles).
+
+```go
+user := goentitlement.NewPrincipal("user123", goentitlement.PrincipalTypeUser)
+user.Attributes["department"] = "engineering"
+user.Groups = []string{"developers", "staff"}
+```
+
+### Resource
+Represents something that can be accessed or acted upon.
+
+```go
+document := goentitlement.NewResource("doc456", goentitlement.ResourceTypeDocument)
+document.Attributes["classification"] = "internal"
+```
+
+### Entitlement
+Represents a specific permission or capability.
+
+```go
+entitlement := goentitlement.NewEntitlement(user, goentitlement.EntitlementTypePermission, "read")
+entitlement.Resource = &document
+entitlement.Conditions = map[string]interface{}{
+    "time_of_day": "business_hours",
+}
+```
+
+## API Reference
+
+### EntitlementManager Interface
+
+The main entry point for the library providing high-level operations:
+
+#### Simple Authorization
+- `CheckPermission(ctx, principal, action, resource) (bool, error)`
+- `CanAccess(ctx, principalID, resourceID, action) (bool, error)`
+
+#### Feature Flags
+- `HasFeature(ctx, principal, feature) (bool, error)`
+- `IsFeatureEnabled(ctx, principalID, feature) (bool, error)`
+- `EnableFeature(ctx, principalID, feature, conditions) error`
+- `DisableFeature(ctx, principalID, feature) error`
+
+#### Subscription Management
+- `HasSubscription(ctx, principal, tier) (bool, error)`
+- `GetSubscriptionTier(ctx, principalID) (string, error)`
+- `SetSubscription(ctx, principalID, tier, expiresAt) error`
+
+#### RBAC Helpers
+- `HasRole(ctx, principal, role) (bool, error)`
+- `AssignRole(ctx, principalID, role) error`
+- `RemoveRole(ctx, principalID, role) error`
+- `GetRoles(ctx, principalID) ([]string, error)`
+
+#### Entitlement Management
+- `GrantEntitlement(ctx, entitlement) error`
+- `RevokeEntitlement(ctx, entitlementID) error`
+- `ListEntitlements(ctx, principal) ([]Entitlement, error)`
+
+#### Batch Operations
+- `CheckMultiplePermissions(ctx, requests) ([]AuthorizationResult, error)`
+- `GrantMultipleEntitlements(ctx, entitlements) error`
+
+### Storage Interface
+
+The library includes a pluggable storage system:
+
+```go
+type EntitlementStore interface {
+    // Policy storage
+    SavePolicy(ctx, policy) error
+    GetPolicy(ctx, id) (Policy, error)
+    ListPolicies(ctx) ([]Policy, error)
+    DeletePolicy(ctx, id) error
+    
+    // Entity storage
+    SavePrincipal(ctx, principal) error
+    GetPrincipal(ctx, id) (Principal, error)
+    SaveResource(ctx, resource) error
+    GetResource(ctx, id) (Resource, error)
+    
+    // Entitlement storage
+    SaveEntitlement(ctx, entitlement) error
+    GetEntitlement(ctx, id) (Entitlement, error)
+    GetEntitlements(ctx, principalID) ([]Entitlement, error)
+    DeleteEntitlement(ctx, id) error
+    
+    // Batch operations
+    SaveEntitlements(ctx, entitlements) error
+    
+    // Health and maintenance
+    Health(ctx) error
+    Close() error
+}
+```
+
+## Usage Examples
+
+### Feature Flag Management
+
+```go
+// Enable a feature for a user
+err := manager.EnableFeature(ctx, "user123", "premium_analytics", map[string]interface{}{
+    "trial_expires": time.Now().Add(30 * 24 * time.Hour),
+})
+
+// Check if user has feature
+hasFeature, err := manager.HasFeature(ctx, user, "premium_analytics")
+```
+
+### Subscription Management
+
+```go
+// Set user subscription
+expiryDate := time.Now().Add(365 * 24 * time.Hour)
+err := manager.SetSubscription(ctx, "user123", "premium", &expiryDate)
+
+// Check subscription tier
+tier, err := manager.GetSubscriptionTier(ctx, "user123")
+
+// Check if user has specific subscription
+hasPremium, err := manager.HasSubscription(ctx, user, "premium")
+```
+
+### RBAC Operations
+
+```go
+// Assign role to user
+err := manager.AssignRole(ctx, "user123", "admin")
+
+// Check if user has role
+hasRole, err := manager.HasRole(ctx, user, "admin")
+
+// Get all user roles
+roles, err := manager.GetRoles(ctx, "user123")
+
+// Remove role
+err = manager.RemoveRole(ctx, "user123", "admin")
+```
+
+### Batch Operations
+
+```go
+// Batch authorization checks
+requests := []goentitlement.AuthorizationRequest{
+    {Principal: user1, Action: "read", Resource: doc1},
+    {Principal: user1, Action: "write", Resource: doc2},
+    {Principal: user2, Action: "delete", Resource: doc3},
+}
+
+results, err := manager.CheckMultiplePermissions(ctx, requests)
+
+// Batch entitlement granting
+entitlements := []goentitlement.Entitlement{
+    goentitlement.NewEntitlement(user1, goentitlement.EntitlementTypePermission, "read"),
+    goentitlement.NewEntitlement(user2, goentitlement.EntitlementTypePermission, "write"),
+}
+
+err = manager.GrantMultipleEntitlements(ctx, entitlements)
+```
+
+## Configuration
+
+### Manager Options
+
+```go
+// Create manager with custom configuration
+manager := goentitlement.NewEntitlementManagerWithStore(store,
+    goentitlement.WithCache(5*time.Minute),
+    goentitlement.WithAuditLogger(auditLogger),
+    goentitlement.WithPolicyDir("./policies"),
+    goentitlement.WithMetrics(metricsCollector),
+)
+```
+
+### Available Options
+
+- `WithPolicyDir(dir string)` - Set directory for policy files
+- `WithCache(ttl time.Duration)` - Enable caching with specified TTL
+- `WithAuditLogger(logger AuditLogger)` - Enable audit logging
+- `WithMetrics(collector MetricsCollector)` - Enable metrics collection
+
+## Error Handling
+
+The library uses custom error types with specific error codes:
+
+```go
+type EntitlementError struct {
+    Code    ErrorCode
+    Message string
+    Cause   error
+}
+
+// Error codes
+const (
+    ErrorCodeNotFound     = "NOT_FOUND"
+    ErrorCodeUnauthorized = "UNAUTHORIZED"
+    ErrorCodeInvalidInput = "INVALID_INPUT"
+    ErrorCodeStorageError = "STORAGE_ERROR"
+    ErrorCodePolicyError  = "POLICY_ERROR"
+)
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+go test -v
+```
+
+The library includes comprehensive tests covering:
+- Basic permission checks
+- Feature flag management
+- RBAC operations
+- Subscription management
+- Batch operations
+
+## Architecture
+
+The library is built with a layered architecture:
+
+1. **High-Level API** - Simple methods for common operations
+2. **Mid-Level API** - Entity management and policy building
+3. **Low-Level API** - Direct Cedar policy access
+4. **Storage Layer** - Pluggable storage backends
+
+## Performance Considerations
+
+- **Caching**: Built-in caching layer for frequently accessed policies and entities
+- **Batch Operations**: Support for bulk authorization checks and entitlement operations
+- **Concurrent Processing**: Safe for concurrent use with proper locking mechanisms
+- **Lazy Loading**: Entities and policies loaded on-demand
+
+## Security Features
+
+- **Audit Logging**: Comprehensive audit trail for all authorization decisions
+- **Policy Validation**: Built-in validation for policies
+- **Input Sanitization**: Protection against injection attacks
+- **Encryption Support**: Optional encryption for sensitive data in storage
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+[MIT License](LICENSE)
