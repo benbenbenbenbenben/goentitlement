@@ -1,3 +1,27 @@
+// Package test provides testing utilities and helpers for the SaaS API example.
+//
+// This package contains reusable test infrastructure including test server setup,
+// JWT token generation for different user types, HTTP request helpers, and
+// assertion utilities for testing authorization scenarios.
+//
+// Key features:
+//   - TestServer for integration testing with real HTTP endpoints
+//   - JWT token generation for different user personas (admin, premium, basic, trial)
+//   - HTTP request helpers with authentication
+//   - Response assertion utilities
+//   - Test data setup and teardown
+//
+// Example usage:
+//
+//	func TestProtectedEndpoint(t *testing.T) {
+//		testServer := test.NewTestServer(t)
+//		defer testServer.Close()
+//
+//		token := testServer.GenerateTokenForUser("premium-user")
+//		response := testServer.AuthenticatedRequest("GET", "/api/protected", token, nil)
+//
+//		test.AssertHTTPStatus(t, response, http.StatusOK)
+//	}
 package test
 
 import (
@@ -18,24 +42,40 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Test constants
 const (
+	// TestJWTSigningKey is a test-only JWT signing key for generating tokens
 	TestJWTSigningKey = "test-jwt-signing-key-for-testing-only"
-	TestJWTIssuer     = "saas-api-test"
+	// TestJWTIssuer identifies the test environment in JWT tokens
+	TestJWTIssuer = "saas-api-test"
 )
 
-// TestServer represents a test server instance with all dependencies
+// TestServer represents a complete test server instance with all dependencies.
+//
+// This structure provides everything needed for integration testing, including
+// an HTTP test server, entitlement manager, JWT manager, and all handlers.
+// It allows tests to make real HTTP requests and verify the complete
+// authentication and authorization flow.
 type TestServer struct {
-	Server             *httptest.Server
+	// Server is the HTTP test server instance
+	Server *httptest.Server
+	// EntitlementManager provides authorization functionality
 	EntitlementManager goentitlement.EntitlementManager
-	JWTManager         *auth.JWTManager
-	AuthMiddleware     *middleware.AuthMiddleware
-	APIHandlers        *handlers.APIHandlers
+	// JWTManager handles token operations
+	JWTManager *auth.JWTManager
+	// AuthMiddleware provides authentication middleware
+	AuthMiddleware *middleware.AuthMiddleware
+	// APIHandlers contains all HTTP request handlers
+	APIHandlers *handlers.APIHandlers
 }
 
-// TestingInterface is an interface that both testing.T and testing.B implement
+// TestingInterface provides a common interface for testing.T and testing.B.
+//
+// This interface allows test helper functions to work with both unit tests
+// and benchmarks, providing consistent error reporting across test types.
 type TestingInterface interface {
+	// Fatalf reports a fatal error and stops test execution
 	Fatalf(format string, args ...interface{})
+	// Errorf reports an error but continues test execution
 	Errorf(format string, args ...interface{})
 }
 

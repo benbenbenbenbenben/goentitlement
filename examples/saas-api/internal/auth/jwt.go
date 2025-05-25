@@ -1,3 +1,8 @@
+// Package auth provides JWT-based authentication for the SaaS API example.
+//
+// This package demonstrates how to integrate JWT tokens with the goentitlement
+// library, embedding authorization information directly in the tokens while
+// still leveraging the entitlement system for fine-grained access control.
 package auth
 
 import (
@@ -9,24 +14,63 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWTClaims represents the custom claims in our JWT tokens
+// JWTClaims represents the custom claims embedded in JWT tokens.
+//
+// These claims include user identification, role information, subscription
+// details, and feature flags. This allows for efficient authorization
+// decisions without always requiring database lookups, while still
+// maintaining integration with the entitlement system.
+//
+// Example token payload:
+//
+//	{
+//		"user_id": "user-456",
+//		"email": "premium@example.com",
+//		"role": "user",
+//		"subscription": "premium",
+//		"features": ["advanced_analytics"],
+//		"attributes": {"department": "engineering"},
+//		"iss": "saas-api-example",
+//		"exp": 1234567890
+//	}
 type JWTClaims struct {
-	UserID       string            `json:"user_id"`
-	Email        string            `json:"email"`
-	Role         string            `json:"role"`
-	Subscription string            `json:"subscription"`
-	Features     []string          `json:"features"`
-	Attributes   map[string]string `json:"attributes"`
+	// UserID is the unique identifier for the user
+	UserID string `json:"user_id"`
+	// Email is the user's email address
+	Email string `json:"email"`
+	// Role specifies the user's primary role (user, admin, etc.)
+	Role string `json:"role"`
+	// Subscription indicates the user's subscription tier
+	Subscription string `json:"subscription"`
+	// Features lists the feature flags enabled for this user
+	Features []string `json:"features"`
+	// Attributes contains additional user attributes
+	Attributes map[string]string `json:"attributes"`
+	// RegisteredClaims includes standard JWT claims (iss, exp, etc.)
 	jwt.RegisteredClaims
 }
 
-// JWTManager handles JWT operations
+// JWTManager handles JWT token creation, validation, and claims extraction.
+//
+// This manager provides a bridge between HTTP authentication and the
+// goentitlement system, converting JWT claims into Principal objects
+// and managing token lifecycle.
 type JWTManager struct {
+	// signingKey is the secret key used for HMAC signing
 	signingKey []byte
-	issuer     string
+	// issuer identifies this service in JWT tokens
+	issuer string
 }
 
-// NewJWTManager creates a new JWT manager
+// NewJWTManager creates a new JWT manager with the specified signing key and issuer.
+//
+// The signing key should be a strong, randomly generated secret that is
+// kept secure and consistent across service restarts. The issuer should
+// identify your service uniquely.
+//
+// Example:
+//
+//	jwtManager := auth.NewJWTManager([]byte("your-secret-key"), "my-api-service")
 func NewJWTManager(signingKey []byte, issuer string) *JWTManager {
 	return &JWTManager{
 		signingKey: signingKey,

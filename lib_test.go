@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+// TestBasicPermissionCheck verifies basic permission checking functionality.
+//
+// This test creates a user and document, grants the user read permission,
+// and verifies that the permission check returns the expected result.
 func TestBasicPermissionCheck(t *testing.T) {
 	// Create test entities
 	user := NewPrincipal("user123", PrincipalTypeUser)

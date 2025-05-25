@@ -1,3 +1,15 @@
+// Package handlers provides HTTP request handlers for the SaaS API example.
+//
+// This package demonstrates how to integrate goentitlement authorization
+// checks into HTTP handlers, showing patterns for feature flags, subscription
+// checks, role-based access control, and error handling.
+//
+// The handlers showcase different authorization patterns:
+//   - Public endpoints with no authorization
+//   - Protected endpoints requiring authentication
+//   - Feature-gated endpoints requiring specific capabilities
+//   - Subscription-gated endpoints requiring tier access
+//   - Admin-only endpoints requiring specific roles
 package handlers
 
 import (
@@ -11,13 +23,27 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// APIHandlers contains all API handlers and dependencies
+// APIHandlers contains all HTTP handlers and their dependencies.
+//
+// This struct encapsulates the entitlement manager and JWT manager,
+// providing them to all handler methods for authorization and
+// authentication operations.
 type APIHandlers struct {
+	// entitlementManager provides authorization and entitlement checking
 	entitlementManager goentitlement.EntitlementManager
-	jwtManager         *auth.JWTManager
+	// jwtManager handles JWT token operations
+	jwtManager *auth.JWTManager
 }
 
-// NewAPIHandlers creates a new API handlers instance
+// NewAPIHandlers creates a new API handlers instance with the required dependencies.
+//
+// The handlers require both an entitlement manager for authorization decisions
+// and a JWT manager for token operations.
+//
+// Example:
+//
+//	handlers := NewAPIHandlers(entitlementManager, jwtManager)
+//	handlers.SetupRoutes(router, authMiddleware)
 func NewAPIHandlers(entitlementManager goentitlement.EntitlementManager, jwtManager *auth.JWTManager) *APIHandlers {
 	return &APIHandlers{
 		entitlementManager: entitlementManager,
@@ -25,18 +51,46 @@ func NewAPIHandlers(entitlementManager goentitlement.EntitlementManager, jwtMana
 	}
 }
 
-// Response represents a standard API response
+// Response represents a standardized API response format.
+//
+// This structure provides consistent response formatting across all
+// endpoints, with clear success/error indication and optional data payload.
+//
+// Example success response:
+//
+//	{
+//		"success": true,
+//		"data": {"message": "Operation completed"}
+//	}
+//
+// Example error response:
+//
+//	{
+//		"success": false,
+//		"error": "Insufficient permissions",
+//		"code": "UNAUTHORIZED"
+//	}
 type Response struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-	Code    string      `json:"code,omitempty"`
+	// Success indicates whether the request was successful
+	Success bool `json:"success"`
+	// Data contains the response payload for successful requests
+	Data interface{} `json:"data,omitempty"`
+	// Error contains the error message for failed requests
+	Error string `json:"error,omitempty"`
+	// Code provides a machine-readable error code for failed requests
+	Code string `json:"code,omitempty"`
 }
 
-// UserInfo represents user information response
+// UserInfo represents user profile information returned by the API.
+//
+// This structure includes both authentication information (from JWT claims)
+// and authorization information (from the entitlement system).
 type UserInfo struct {
-	UserID       string            `json:"user_id"`
-	Email        string            `json:"email"`
+	// UserID is the unique identifier for the user
+	UserID string `json:"user_id"`
+	// Email is the user's email address
+	Email string `json:"email"`
+	// Role specifies the user's primary role
 	Role         string            `json:"role"`
 	Subscription string            `json:"subscription"`
 	Features     []string          `json:"features"`

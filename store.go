@@ -7,17 +7,45 @@ import (
 	"time"
 )
 
-// InMemoryStore implements EntitlementStore using in-memory storage
+// InMemoryStore implements EntitlementStore using in-memory storage.
+//
+// This implementation stores all data in memory using Go maps, making it
+// suitable for development, testing, or applications that don't require
+// data persistence. All data is lost when the application terminates.
+//
+// The store is thread-safe and uses read-write mutexes for optimal
+// performance on read-heavy workloads. It includes an index for efficient
+// principal-to-entitlement lookups and automatic duplicate handling.
+//
+// Performance characteristics:
+//   - Reads: O(1) for direct lookups, O(n) for filtered operations
+//   - Writes: O(1) for single operations, O(n) for batch operations
+//   - Memory usage: Linear with the number of stored entities
 type InMemoryStore struct {
-	mu                    sync.RWMutex
-	policies              map[string]Policy
-	principals            map[string]Principal
-	resources             map[string]Resource
-	entitlements          map[string]Entitlement
-	principalEntitlements map[string][]string // principalID -> entitlementIDs
+	// mu protects all data structures from concurrent access
+	mu sync.RWMutex
+	// policies maps policy IDs to Policy structs
+	policies map[string]Policy
+	// principals maps principal IDs to Principal structs
+	principals map[string]Principal
+	// resources maps resource IDs to Resource structs
+	resources map[string]Resource
+	// entitlements maps entitlement IDs to Entitlement structs
+	entitlements map[string]Entitlement
+	// principalEntitlements provides an index from principal IDs to their entitlement IDs
+	principalEntitlements map[string][]string
 }
 
-// NewInMemoryStore creates a new in-memory store
+// NewInMemoryStore creates a new in-memory storage backend.
+//
+// The returned store is immediately ready for use and requires no
+// initialization or cleanup. All internal data structures are
+// properly initialized.
+//
+// Example:
+//
+//	store := NewInMemoryStore()
+//	manager := NewEntitlementManagerWithStore(store)
 func NewInMemoryStore() EntitlementStore {
 	return &InMemoryStore{
 		policies:              make(map[string]Policy),

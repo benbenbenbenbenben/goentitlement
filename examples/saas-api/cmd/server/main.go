@@ -1,3 +1,18 @@
+// Package main demonstrates a complete SaaS API example using goentitlement.
+//
+// This example shows how to integrate the goentitlement library into a realistic
+// web application with JWT authentication, role-based access control, feature flags,
+// and subscription management.
+//
+// The API provides several endpoints that demonstrate different authorization patterns:
+//   - Public endpoints accessible to everyone
+//   - Protected endpoints requiring authentication
+//   - Feature-gated endpoints requiring specific feature flags
+//   - Subscription-gated endpoints requiring subscription tiers
+//   - Admin endpoints requiring specific roles
+//
+// Run with: go run examples/saas-api/cmd/server/main.go
+// Then visit: http://localhost:8080/api/tokens to get test JWT tokens
 package main
 
 import (
@@ -17,14 +32,22 @@ import (
 )
 
 const (
-	// Server configuration
+	// serverPort specifies the HTTP port for the API server
 	serverPort = ":8080"
 
-	// JWT configuration
+	// jwtSigningKey is the secret key for JWT token signing
+	// NOTE: In production, this should be loaded from environment variables or a secure store
 	jwtSigningKey = "your-super-secret-jwt-signing-key-change-this-in-production"
-	jwtIssuer     = "saas-api-example"
+
+	// jwtIssuer identifies this service as the JWT token issuer
+	jwtIssuer = "saas-api-example"
 )
 
+// main initializes and starts the SaaS API example server.
+//
+// The function sets up the entitlement manager, initializes sample data,
+// configures middleware and handlers, and starts an HTTP server with
+// graceful shutdown support.
 func main() {
 	log.Println("Starting SaaS API Example with goentitlement integration...")
 
@@ -103,7 +126,21 @@ func main() {
 	log.Println("Server exited")
 }
 
-// initializeSampleData sets up sample users, features, and entitlements for testing
+// initializeSampleData sets up sample users, features, and entitlements for testing.
+//
+// This function creates a realistic dataset demonstrating various authorization scenarios:
+//   - Admin users with full access and enterprise subscriptions
+//   - Premium users with enhanced features and premium subscriptions
+//   - Basic users with standard access and basic subscriptions
+//   - Trial users with time-limited access to basic features
+//
+// The sample data includes:
+//   - 4 principals (users) with different attributes and group memberships
+//   - 6 resources (3 features + 3 subscription tiers)
+//   - Multiple entitlements linking principals to their authorized resources
+//
+// This setup allows testing of role-based access control, feature flags,
+// subscription management, and time-based entitlements.
 func initializeSampleData(manager goentitlement.EntitlementManager) error {
 	ctx := context.Background()
 

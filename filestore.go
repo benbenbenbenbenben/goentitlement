@@ -10,16 +10,55 @@ import (
 )
 
 // FileStore implements the EntitlementStore interface using the local filesystem.
-// Data is stored in JSON files.
+//
+// This implementation stores all data as JSON files in a structured directory
+// hierarchy. It provides persistent storage without requiring a database,
+// making it suitable for applications that need data persistence but have
+// simple storage requirements.
+//
+// Directory structure:
+//
+//	baseDir/
+//	├── principals/     (Principal entities as JSON files)
+//	├── resources/      (Resource entities as JSON files)
+//	├── entitlements/   (Entitlement grants as JSON files)
+//	└── policies/       (Cedar policies as JSON files)
+//
+// Performance characteristics:
+//   - Reads: O(1) for direct lookups, O(n) for queries requiring file scanning
+//   - Writes: O(1) for single operations, involves filesystem I/O
+//   - Storage: Human-readable JSON files, suitable for version control
+//
+// Note: This implementation is not suitable for high-concurrency scenarios
+// as it lacks file locking and transactional guarantees.
 type FileStore struct {
-	principalsDir   string
-	resourcesDir    string
+	// principalsDir stores the path to the principals directory
+	principalsDir string
+	// resourcesDir stores the path to the resources directory
+	resourcesDir string
+	// entitlementsDir stores the path to the entitlements directory
 	entitlementsDir string
-	policiesDir     string
+	// policiesDir stores the path to the policies directory
+	policiesDir string
 }
 
-// NewFileStore creates a new FileStore instance.
-// It will create the necessary directories if they don't exist.
+// NewFileStore creates a new file-based storage backend.
+//
+// The function creates the necessary directory structure if it doesn't exist.
+// All directories are created with permissions 0755, and files are written
+// with permissions 0644.
+//
+// The baseDir parameter specifies the root directory where all data will
+// be stored. Subdirectories will be created automatically for different
+// entity types.
+//
+// Example:
+//
+//	store, err := NewFileStore("/var/lib/myapp/entitlements")
+//	if err != nil {
+//		log.Fatal("Failed to create file store:", err)
+//	}
+//	manager := NewEntitlementManagerWithStore(store)
 func NewFileStore(baseDir string) (*FileStore, error) {
 	principalsDir := filepath.Join(baseDir, "principals")
 	resourcesDir := filepath.Join(baseDir, "resources")

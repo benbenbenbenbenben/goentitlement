@@ -8,8 +8,24 @@ import (
 	"time"
 )
 
-// TestDuplicateEntitlements demonstrates the duplicate entitlement issue
-// across both InMemoryStore and FileStore implementations.
+// TestDuplicateEntitlements verifies that duplicate entitlement handling works correctly.
+//
+// This test demonstrates and validates the duplicate entitlement detection and
+// handling logic across both InMemoryStore and FileStore implementations.
+// It ensures that when logically duplicate entitlements are saved, they
+// update existing entitlements rather than creating new ones.
+//
+// The test covers:
+//   - Saving an initial entitlement
+//   - Attempting to save a logically duplicate entitlement
+//   - Verifying that only one entitlement exists (no duplicate created)
+//   - Verifying that the existing entitlement was updated with new metadata
+//
+// Logical duplicates are defined as entitlements with the same:
+//   - Principal ID
+//   - Resource ID and Type (if resource is present)
+//   - Action
+//   - Entitlement Type
 func TestDuplicateEntitlements(t *testing.T) {
 	tests := []struct {
 		name     string

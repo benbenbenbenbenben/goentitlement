@@ -1,3 +1,14 @@
+// Package middleware provides HTTP middleware for the SaaS API example.
+//
+// This package demonstrates how to integrate JWT authentication and
+// goentitlement authorization into HTTP middleware, providing reusable
+// components for protecting API endpoints.
+//
+// The middleware handles:
+//   - JWT token extraction and validation
+//   - Principal creation from JWT claims
+//   - Context injection for downstream handlers
+//   - Standardized error responses for authentication failures
 package middleware
 
 import (
@@ -10,23 +21,45 @@ import (
 	"github.com/benbenbenbenbenben/goentitlement/examples/saas-api/internal/auth"
 )
 
-// ContextKey type for context keys to avoid collisions
+// ContextKey is a custom type for context keys to avoid string collision.
+//
+// Using a custom type for context keys is a Go best practice that prevents
+// accidental key collisions when multiple packages store values in the
+// same request context.
 type ContextKey string
 
 const (
-	// PrincipalContextKey is the key for storing the principal in request context
+	// PrincipalContextKey is used to store the authenticated principal in request context
 	PrincipalContextKey ContextKey = "principal"
-	// ClaimsContextKey is the key for storing JWT claims in request context
+	// ClaimsContextKey is used to store the JWT claims in request context
 	ClaimsContextKey ContextKey = "claims"
 )
 
-// AuthMiddleware handles JWT authentication and authorization
+// AuthMiddleware provides JWT authentication and entitlement-based authorization.
+//
+// This middleware extracts JWT tokens from requests, validates them, converts
+// the claims into goentitlement Principal objects, and injects both the
+// principal and claims into the request context for use by downstream handlers.
+//
+// The middleware supports the standard Authorization header format:
+//
+//	Authorization: Bearer <jwt-token>
 type AuthMiddleware struct {
-	jwtManager         *auth.JWTManager
+	// jwtManager handles token validation and claims extraction
+	jwtManager *auth.JWTManager
+	// entitlementManager provides additional authorization capabilities
 	entitlementManager goentitlement.EntitlementManager
 }
 
-// NewAuthMiddleware creates a new authentication middleware
+// NewAuthMiddleware creates a new authentication middleware instance.
+//
+// The middleware requires both a JWT manager for token operations and an
+// entitlement manager for authorization decisions.
+//
+// Example:
+//
+//	authMiddleware := NewAuthMiddleware(jwtManager, entitlementManager)
+//	router.Use(authMiddleware.RequireAuth)
 func NewAuthMiddleware(jwtManager *auth.JWTManager, entitlementManager goentitlement.EntitlementManager) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtManager:         jwtManager,
@@ -34,9 +67,14 @@ func NewAuthMiddleware(jwtManager *auth.JWTManager, entitlementManager goentitle
 	}
 }
 
-// ErrorResponse represents an API error response
+// ErrorResponse represents a standardized error response format.
+//
+// This structure provides consistent error formatting for authentication
+// and authorization failures across all middleware.
 type ErrorResponse struct {
-	Error   string `json:"error"`
+	// Error contains a human-readable error message
+	Error string `json:"error"`
+	// Code provides a machine-readable error code
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }

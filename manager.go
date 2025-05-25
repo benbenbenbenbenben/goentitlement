@@ -9,22 +9,52 @@ import (
 	"github.com/google/uuid"
 )
 
-// manager implements the EntitlementManager interface
+// manager implements the EntitlementManager interface.
+//
+// This is the main implementation of the entitlement management system,
+// providing all core functionality including authorization checks, feature
+// flag management, subscription handling, and role-based access control.
+//
+// The manager is thread-safe and can be used concurrently from multiple
+// goroutines. It supports caching, audit logging, and metrics collection
+// for production use.
 type manager struct {
-	store            EntitlementStore
-	config           *ManagerConfig
-	cache            map[string]cacheEntry
-	cacheMu          sync.RWMutex
-	auditLogger      AuditLogger
+	// store provides persistent storage for entitlement data
+	store EntitlementStore
+	// config contains the manager's configuration settings
+	config *ManagerConfig
+	// cache provides in-memory caching when enabled
+	cache map[string]cacheEntry
+	// cacheMu protects concurrent access to the cache
+	cacheMu sync.RWMutex
+	// auditLogger records security-relevant events
+	auditLogger AuditLogger
+	// metricsCollector gathers performance and usage statistics
 	metricsCollector MetricsCollector
 }
 
+// cacheEntry represents a cached value with expiration time.
+//
+// Cache entries store the actual cached value along with metadata
+// about when the entry should be considered stale and evicted.
 type cacheEntry struct {
-	value     interface{}
+	// value is the cached data
+	value interface{}
+	// expiresAt indicates when this cache entry becomes invalid
 	expiresAt time.Time
 }
 
-// NewManager creates a new EntitlementManager with default configuration
+// NewManager creates a new EntitlementManager with default in-memory storage.
+//
+// This is a convenience function that creates a manager with an in-memory
+// store and applies any provided configuration options.
+//
+// Example:
+//
+//	manager := NewManager(
+//		WithCache(5*time.Minute),
+//		WithAuditLogger(myLogger),
+//	)
 func NewManager(opts ...ManagerOption) EntitlementManager {
 	return NewManagerWithStore(NewInMemoryStore(), opts...)
 }
