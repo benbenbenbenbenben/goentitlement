@@ -31,7 +31,6 @@ import (
 
 func main() {
     // Create manager with default in-memory store
-    manager := goentitlement.NewEntitlementManager()
     ctx := context.Background()
     
     // Create entities
