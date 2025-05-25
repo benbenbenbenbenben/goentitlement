@@ -7,22 +7,27 @@ import (
 )
 
 const policyCedar = `permit (
-	principal == User::"alice",
+	principal in UserGroup::"jane_friends",
 	action == Action::"view",
-	resource in Album::"jane_vacation"
+	resource == Photo::"VacationPhoto94.jpg"
   );
 `
 
 const entitiesJSON = `[
   {
-    "uid": { "type": "User", "id": "alice" },
-    "attrs": { "age": 18 },
+    "uid": {"type": "PublicKey", "id": "ed25519:MCowBQYDK2VwAQoDIQD1OW5HC2WYL8nN0fOtWJNM8qtqQ1kwKvl+oUv7OVz5+g=="},
+    "attrs": {},
+    "parents": [{"type": "UserGroup", "id": "jane_friends"}]
+  },
+  {
+    "uid": {"type": "UserGroup", "id": "jane_friends"},
+    "attrs": {},
     "parents": []
   },
   {
-    "uid": { "type": "Photo", "id": "VacationPhoto94.jpg" },
+    "uid": {"type": "Photo", "id": "VacationPhoto94.jpg"},
     "attrs": {},
-    "parents": [{ "type": "Album", "id": "jane_vacation" }]
+    "parents": []
   }
 ]`
 
@@ -41,7 +46,7 @@ func Allow() (bool, error) {
 	}
 
 	req := cedar.Request{
-		Principal: cedar.NewEntityUID("User", "alice"),
+		Principal: cedar.NewEntityUID("PublicKey", "ed25519:MCowBQYDK2VwAQoDIQD1OW5HC2WYL8nN0fOtWJNM8qtqQ1kwKvl+oUv7OVz5+g=="),
 		Action:    cedar.NewEntityUID("Action", "view"),
 		Resource:  cedar.NewEntityUID("Photo", "VacationPhoto94.jpg"),
 		Context: cedar.NewRecord(cedar.RecordMap{
